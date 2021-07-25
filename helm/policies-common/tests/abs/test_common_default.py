@@ -4,6 +4,7 @@ sys.path.append('../../../tests')
 import yaml
 from functools import partial
 import time
+import base64
 import random
 import string
 import ensure
@@ -13,6 +14,7 @@ from ensure import release
 from ensure import cluster
 from ensure import machinedeployment
 from ensure import kubeadmconfig
+from ensure import bastionbootstrapsecret
 
 import pytest
 from pytest_kube import forward_requests, wait_for_rollout, app_template
@@ -55,3 +57,18 @@ def test_kubeadmconfig_policy(kubeadmconfig) -> None:
     assert kubeadmconfig['metadata']['labels']['cluster.x-k8s.io/watch-filter'] == ensure.watch_label
     assert kubeadmconfig['spec']['joinConfiguration']['nodeRegistration']['kubeletExtraArgs']['healthz-bind-address'] == "0.0.0.0"
     assert kubeadmconfig['spec']['joinConfiguration']['nodeRegistration']['kubeletExtraArgs']['node-labels'] == "role=worker"
+
+
+@pytest.mark.smoke
+def test_bastion_bootstrap_secret(bastionbootstrapsecret) -> None:
+    """
+    test_bastion_bootstrap_secret tests templating of bootstrap secret for bastion.
+
+    :param bastionbootstrapsecret: bootstrap secret which should be templated.
+    """
+    secret_value = 'test=c3NoLXJzYSBBQUFBQSBmYWtlQGdpYW50c3dhcm0='
+    secret_value_bytes = secret_value.encode('ascii')
+    secret_value_encoded_bytes = base64.b64encode(secret_value_bytes)
+    secret_value_encoded = secret_value_encoded_bytes.decode('ascii')
+
+    assert bastionbootstrapsecret['data']['value'] == secret_value_encoded

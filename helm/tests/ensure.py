@@ -171,6 +171,39 @@ def kubeadmconfig(kubernetes_cluster):
     kubernetes_cluster.kubectl(f"delete kubeadmconfig {cluster_name}", output=None)
     LOGGER.info(f"KubeadmConfig {cluster_name} deleted")
 
+# CAPA bastion fixtures
+
+@pytest.fixture
+def bastionbootstrapsecret(kubernetes_cluster):
+    c = dedent(f"""
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          name: {cluster_name}-bastion
+          namespace: default
+          labels:
+            giantswarm.io/cluster: {cluster_name}
+            cluster.x-k8s.io/cluster-name: {cluster_name}
+            cluster.x-k8s.io/watch-filter: capi
+            cluster.x-k8s.io/role: bastion
+        stringData:
+          value: |-
+            test=SSHSSOPUBLICKEYPLACEHOLDER
+    """)
+
+    kubernetes_cluster.kubectl("apply", input=c, output=None)
+    LOGGER.info(f"Bastion bootstrap secret {cluster_name}-bastion applied")
+
+    raw = kubernetes_cluster.kubectl(
+        f"get secret {cluster_name}-bastion", output="yaml")
+
+    bastionbootstrapsecret = yaml.safe_load(raw)
+
+    yield bastionbootstrapsecret
+
+    kubernetes_cluster.kubectl(f"delete secret {cluster_name}-bastion", output=None)
+    LOGGER.info(f"Bastion bootstrap secret {cluster_name}-bastion deleted")
+
 # CAPA fixtures
 
 @pytest.fixture
